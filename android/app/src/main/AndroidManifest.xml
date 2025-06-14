@@ -3,6 +3,10 @@
         android:label="test_flutter_kotlin_hello_world"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- ✅ この行を追加 -->
+        <activity android:name=".HelloWorldActivity" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
