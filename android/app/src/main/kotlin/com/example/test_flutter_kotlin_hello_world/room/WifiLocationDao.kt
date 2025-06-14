@@ -3,6 +3,7 @@ package com.example.test_flutter_kotlin_hello_world.room
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Delete
 
 @Dao
 interface WifiLocationDao {
@@ -12,4 +13,11 @@ interface WifiLocationDao {
 
     @Query("SELECT * FROM wifi_location")
     suspend fun getAll(): List<WifiLocationEntity>
+
+    @Query("DELETE FROM wifi_location")
+    suspend fun deleteAll()
+
+    // ✅ 1件削除用メソッド
+    @Delete
+    suspend fun delete(location: WifiLocationEntity)
 }
