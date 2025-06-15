@@ -7,8 +7,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,11 +19,9 @@ import com.google.android.gms.location.LocationServices
 import androidx.room.Room
 import com.example.test_flutter_kotlin_hello_world.room.AppDatabase
 import com.example.test_flutter_kotlin_hello_world.room.WifiLocationEntity
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
@@ -75,7 +71,6 @@ fun WifiLocationScreen() {
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
 
-    // 🔽 初回リスト読み込み
     LaunchedEffect(Unit) {
         savedData = withContext(Dispatchers.IO) {
             db.wifiLocationDao().getAll()
@@ -89,11 +84,10 @@ fun WifiLocationScreen() {
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.Top
     ) {
-        Spacer(modifier = Modifier.height(100.dp)) // 上に余白
+        Spacer(modifier = Modifier.height(100.dp))
 
         Button(onClick = {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-
             try {
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                     if (location != null) {
@@ -110,6 +104,20 @@ fun WifiLocationScreen() {
             val wifiManager = context.applicationContext.getSystemService(WifiManager::class.java)
             val wifiInfo = wifiManager?.connectionInfo
             ssid = wifiInfo?.ssid ?: "取得失敗"
+
+            if (ssid == null || ssid == "<unknown ssid>" || ssid == "0x") {
+                val success = wifiManager?.startScan()
+                if (success == true) {
+                    val scanResults = wifiManager.scanResults
+                    if (scanResults.isNotEmpty()) {
+                        ssid = scanResults[0].SSID
+                    } else {
+                        ssid = "取得失敗"
+                    }
+                } else {
+                    ssid = "スキャン失敗"
+                }
+            }
         }) {
             Text("位置情報とSSIDを取得")
         }
@@ -118,7 +126,6 @@ fun WifiLocationScreen() {
 
         Button(onClick = {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-
             try {
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                     if (location != null) {
@@ -144,7 +151,7 @@ fun WifiLocationScreen() {
 
                         scope.launch {
                             db.wifiLocationDao().insert(entity)
-                            savedData = db.wifiLocationDao().getAll() // 保存後に再取得
+                            savedData = db.wifiLocationDao().getAll()
                         }
                     }
                 }
@@ -191,8 +198,8 @@ fun WifiLocationScreen() {
                 Button(
                     onClick = {
                         scope.launch {
-                            db.wifiLocationDao().delete(item)     // ✅ 個別削除
-                            savedData = db.wifiLocationDao().getAll() // 再読み込み
+                            db.wifiLocationDao().delete(item)
+                            savedData = db.wifiLocationDao().getAll()
                         }
                     },
                     contentPadding = PaddingValues(4.dp)
