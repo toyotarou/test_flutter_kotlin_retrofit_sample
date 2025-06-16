@@ -1,12 +1,16 @@
 package com.example.test_flutter_kotlin_hello_world
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -15,15 +19,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.LocationServices
-import androidx.room.Room
 import com.example.test_flutter_kotlin_hello_world.room.AppDatabase
 import com.example.test_flutter_kotlin_hello_world.room.WifiLocationEntity
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.room.Room
 
 class HelloWorldActivity : ComponentActivity() {
 
@@ -32,17 +34,24 @@ class HelloWorldActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_WIFI_STATE)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        // Android 10以降で必要なすべての権限をチェック
+        val requiredPermissions = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_WIFI_STATE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // SDK 34+
+            requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+        }
+
+        val notGranted = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (notGranted.isNotEmpty()) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_WIFI_STATE
-                ),
+                notGranted.toTypedArray(),
                 locationPermissionRequestCode
             )
         }
@@ -77,6 +86,16 @@ fun WifiLocationScreen() {
         }
     }
 
+    // ... 既存の状態変数
+    var isServiceRunning by remember { mutableStateOf(false) }
+
+    // サービスの稼働状態を確認する関数
+    fun checkServiceRunning(): Boolean {
+        val manager = context.getSystemService(android.app.ActivityManager::class.java)
+        val runningServices = manager?.getRunningServices(Int.MAX_VALUE)
+        return runningServices?.any { it.service.className == WifiForegroundService::class.java.name } == true
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -90,10 +109,10 @@ fun WifiLocationScreen() {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
             try {
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    if (location != null) {
-                        locationText = "緯度: ${location.latitude}, 経度: ${location.longitude}"
+                    locationText = if (location != null) {
+                        "緯度: ${location.latitude}, 経度: ${location.longitude}"
                     } else {
-                        locationText = "位置情報が取得できませんでした"
+                        "位置情報が取得できませんでした"
                     }
                 }
             } catch (e: SecurityException) {
@@ -176,6 +195,30 @@ fun WifiLocationScreen() {
         }) {
             Text("保存済みデータを読み込む")
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(onClick = {
+            val intent = Intent(context, WifiForegroundService::class.java)
+            context.startForegroundService(intent)
+        }) {
+            Text("取得サービスを開始")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(onClick = {
+            isServiceRunning = checkServiceRunning()
+        }) {
+            Text("サービス稼働状態を確認")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = if (isServiceRunning) "サービスは稼働中です ✅" else "サービスは停止中です ❌",
+            fontSize = 18.sp
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
