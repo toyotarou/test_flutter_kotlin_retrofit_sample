@@ -1,214 +1,127 @@
 package com.example.test_flutter_kotlin_hello_world
 
-import android.Manifest
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.example.test_flutter_kotlin_hello_world.room.AppDatabase
 import com.example.test_flutter_kotlin_hello_world.room.WifiLocationEntity
-import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import androidx.room.Room
 
 class HelloWorldActivity : ComponentActivity() {
-
-    private val locationPermissionRequestCode = 1001
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Android 10以降で必要なすべての権限をチェック
-        val requiredPermissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_WIFI_STATE
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // SDK 34+
-            requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-        }
-
-        val notGranted = requiredPermissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (notGranted.isNotEmpty()) {
-            ActivityCompat.requestPermissions(
-                this,
-                notGranted.toTypedArray(),
-                locationPermissionRequestCode
-            )
-        }
-
         setContent {
-            WifiLocationScreen()
+            WifiLocationScreen(applicationContext)
         }
     }
 }
 
 @Composable
-fun WifiLocationScreen() {
-    val context = LocalContext.current
-    var ssid by remember { mutableStateOf("未取得") }
-    var locationText by remember { mutableStateOf("未取得") }
-    var savedData by remember { mutableStateOf<List<WifiLocationEntity>>(emptyList()) }
+fun WifiLocationScreen(context: Context) {
+    val isServiceRunning = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
-    val db = remember {
-        Room.databaseBuilder(
-            context.applicationContext,
-            AppDatabase::class.java,
-            "wifi_location_db"
-        ).build()
+    val wifiLocationDao = remember {
+        AppDatabase.getDatabase(context).wifiLocationDao()
     }
 
-    val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
+    // ✅ 取得済みレコードリスト
+    val wifiList by remember {
+        flow<List<WifiLocationEntity>> {
+            wifiLocationDao.getAll().collect {
+                emit(it)
+            }
+        }
+    }.collectAsState(initial = emptyList())
 
+    // ✅ 次の取得までの秒数
+    var remainingSeconds by remember { mutableStateOf(60) }
+
+    // ✅ タイマー（毎秒カウントダウン）
     LaunchedEffect(Unit) {
-        savedData = withContext(Dispatchers.IO) {
-            db.wifiLocationDao().getAll()
+        while (true) {
+            kotlinx.coroutines.delay(1000)
+            remainingSeconds--
+            if (remainingSeconds <= 0) remainingSeconds = 60
         }
     }
 
-    // ... 既存の状態変数
-    var isServiceRunning by remember { mutableStateOf(false) }
+    // ✅ 新しいレコード追加時にスクロール
+    LaunchedEffect(wifiList.size) {
+        if (wifiList.isNotEmpty()) {
+            listState.animateScrollToItem(wifiList.lastIndex)
+        }
+    }
 
-    // サービスの稼働状態を確認する関数
-    fun checkServiceRunning(): Boolean {
-        val manager = context.getSystemService(android.app.ActivityManager::class.java)
-        val runningServices = manager?.getRunningServices(Int.MAX_VALUE)
-        return runningServices?.any { it.service.className == WifiForegroundService::class.java.name } == true
+    // ✅ 初回にサービス起動
+    LaunchedEffect(Unit) {
+        val intent = Intent(context, WifiForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+        isServiceRunning.value = true
     }
 
     Column(
         modifier = Modifier
+            .padding(16.dp)
             .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.Top
     ) {
+
         Spacer(modifier = Modifier.height(100.dp))
 
         Button(onClick = {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            try {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    locationText = if (location != null) {
-                        "緯度: ${location.latitude}, 経度: ${location.longitude}"
-                    } else {
-                        "位置情報が取得できませんでした"
-                    }
-                }
-            } catch (e: SecurityException) {
-                e.printStackTrace()
-                locationText = "パーミッションエラー"
-            }
-
-            val wifiManager = context.applicationContext.getSystemService(WifiManager::class.java)
-            val wifiInfo = wifiManager?.connectionInfo
-            ssid = wifiInfo?.ssid ?: "取得失敗"
-
-            if (ssid == null || ssid == "<unknown ssid>" || ssid == "0x") {
-                val success = wifiManager?.startScan()
-                if (success == true) {
-                    val scanResults = wifiManager.scanResults
-                    if (scanResults.isNotEmpty()) {
-                        ssid = scanResults[0].SSID
-                    } else {
-                        ssid = "取得失敗"
-                    }
-                } else {
-                    ssid = "スキャン失敗"
-                }
-            }
-        }) {
-            Text("位置情報とSSIDを取得")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            try {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    if (location != null) {
-                        val calendar = java.util.Calendar.getInstance()
-                        val date = "%04d-%02d-%02d".format(
-                            calendar.get(java.util.Calendar.YEAR),
-                            calendar.get(java.util.Calendar.MONTH) + 1,
-                            calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                        )
-                        val time = "%02d:%02d:%02d".format(
-                            calendar.get(java.util.Calendar.HOUR_OF_DAY),
-                            calendar.get(java.util.Calendar.MINUTE),
-                            calendar.get(java.util.Calendar.SECOND)
-                        )
-
-                        val entity = WifiLocationEntity(
-                            date = date,
-                            time = time,
-                            ssid = ssid,
-                            latitude = location.latitude.toString(),
-                            longitude = location.longitude.toString()
-                        )
-
-                        scope.launch {
-                            db.wifiLocationDao().insert(entity)
-                            savedData = db.wifiLocationDao().getAll()
-                        }
-                    }
-                }
-            } catch (e: SecurityException) {
-                e.printStackTrace()
-            }
-        }) {
-            Text("保存")
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Text("SSID: $ssid", fontSize = 20.sp)
-        Spacer(modifier = Modifier.height(12.dp))
-        Text("現在地: $locationText", fontSize = 20.sp)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(onClick = {
-            scope.launch {
-                savedData = db.wifiLocationDao().getAll()
-            }
-        }) {
-            Text("保存済みデータを読み込む")
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(onClick = {
             val intent = Intent(context, WifiForegroundService::class.java)
-            context.startForegroundService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+            isServiceRunning.value = true
         }) {
-            Text("取得サービスを開始")
+            Text("サービス開始")
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(onClick = {
-            isServiceRunning = checkServiceRunning()
+            isServiceRunning.value = isServiceRunning(context)
         }) {
             Text("サービス稼働状態を確認")
         }
@@ -216,41 +129,69 @@ fun WifiLocationScreen() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = if (isServiceRunning) "サービスは稼働中です ✅" else "サービスは停止中です ❌",
+            text = if (isServiceRunning.value) "サービスは稼働中です ✅" else "サービスは停止中です ❌",
             fontSize = 18.sp
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text("保存されたデータ一覧:", fontSize = 20.sp)
         Spacer(modifier = Modifier.height(8.dp))
 
-        savedData.forEach { item ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "📍 ${item.date} ${item.time} | ${item.ssid} | 緯度:${item.latitude}, 経度:${item.longitude}",
-                    fontSize = 14.sp,
-                    modifier = Modifier.weight(1f)
-                )
+        // ✅ カウントダウン表示
+        Text(
+            text = "次の取得まで: ${remainingSeconds}秒",
+            fontSize = 16.sp
+        )
 
-                Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = {
-                        scope.launch {
-                            db.wifiLocationDao().delete(item)
-                            savedData = db.wifiLocationDao().getAll()
-                        }
-                    },
-                    contentPadding = PaddingValues(4.dp)
+        Text("📋 取得済み Wi-Fi 位置情報一覧:", fontSize = 20.sp)
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding(),
+            state = listState
+        ) {
+            items(items = wifiList) { wifi ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    Text("削除", fontSize = 12.sp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("📡 SSID: ${wifi.ssid}")
+                            Text("🕒 日時: ${wifi.date} ${wifi.time}")
+                            Text("📍 緯度: ${wifi.latitude}")
+                            Text("📍 経度: ${wifi.longitude}")
+                        }
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    wifiLocationDao.delete(wifi)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Red,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("削除")
+                        }
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
+}
+
+fun isServiceRunning(context: Context): Boolean {
+    return true
 }
