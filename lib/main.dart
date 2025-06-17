@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:test_flutter_kotlin_hello_world/pigeon/wifi_location.dart';
 
 void main() {
@@ -30,17 +31,35 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isLoading = false;
   List<WifiLocation> _locations = [];
 
+  Future<void> _requestPermissions() async {
+    final locationStatus = await Permission.location.request();
+    final fgServiceStatus = await Permission.ignoreBatteryOptimizations.request();
+
+    if (!locationStatus.isGranted) {
+      throw Exception('位置情報の権限が拒否されました');
+    }
+    if (!fgServiceStatus.isGranted) {
+      debugPrint('バッテリー最適化除外の許可が拒否されました（続行可能）');
+    }
+  }
+
   Future<void> _startService() async {
     setState(() {
       _isLoading = true;
     });
 
-    final api = WifiLocationApi();
-    await api.startLocationCollection();
+    try {
+      await _requestPermissions(); // ✅ パーミッション取得
 
-    // 🕒 サービス起動を少し待つ（例: 1秒）
-    await Future.delayed(const Duration(seconds: 1));
-    await _checkStatus();
+      final api = WifiLocationApi();
+      await api.startLocationCollection();
+
+      // 🕒 サービス起動を少し待つ（例: 1秒）
+      await Future.delayed(const Duration(seconds: 1));
+      await _checkStatus();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ エラー: ${e.toString()}')));
+    }
 
     setState(() {
       _isLoading = false;
@@ -60,8 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final result = await api.getWifiLocations();
     setState(() {
       _locations = result.whereType<WifiLocation>().toList();
-
-      _locations.sort((a, b) => '${a.date} ${a.time}'.compareTo('${b.date} ${b.time}') * -1);
+      _locations.sort((a, b) => '${b.date} ${b.time}'.compareTo('${a.date} ${a.time}'));
     });
   }
 
@@ -86,7 +104,6 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 12),
             Text(_isRunning ? '✅ サービス稼働中' : '❌ サービス停止中', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 24),
-
             ElevatedButton(
               onPressed: () async {
                 final api = WifiLocationApi();
@@ -96,9 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               child: const Text('全削除'),
             ),
-
             const SizedBox(height: 24),
-
             ElevatedButton(onPressed: _fetchData, child: const Text('Roomから取得（Flutter表示）')),
             const SizedBox(height: 12),
             Expanded(

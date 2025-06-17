@@ -1,5 +1,6 @@
 package com.example.test_flutter_kotlin_hello_world
 
+import android.content.pm.ServiceInfo
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -31,7 +32,16 @@ class WifiForegroundService : Service() {
         super.onCreate()
         isRunning = true
         createNotificationChannel()
-        startForeground(1, createNotification("Wi-Fi位置情報取得中..."))
+
+        val notification = createNotification("Wi-Fi位置情報取得中...")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // Android 14+ は service type を明示する必要あり
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        } else {
+            startForeground(1, notification)
+        }
+
         startCollecting()
     }
 
