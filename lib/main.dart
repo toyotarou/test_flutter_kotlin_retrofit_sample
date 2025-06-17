@@ -86,6 +86,19 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 12),
             Text(_isRunning ? '✅ サービス稼働中' : '❌ サービス停止中', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 24),
+
+            ElevatedButton(
+              onPressed: () async {
+                final api = WifiLocationApi();
+                await api.deleteAllWifiLocations();
+
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('全件削除しました')));
+              },
+              child: const Text('全削除'),
+            ),
+
+            const SizedBox(height: 24),
+
             ElevatedButton(onPressed: _fetchData, child: const Text('Roomから取得（Flutter表示）')),
             const SizedBox(height: 12),
             Expanded(
