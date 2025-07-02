@@ -1,6 +1,5 @@
-package com.example.test_flutter_kotlin_hello_world
+package com.example.test_flutter_kotlin_retrofit_sample3
 
-import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 

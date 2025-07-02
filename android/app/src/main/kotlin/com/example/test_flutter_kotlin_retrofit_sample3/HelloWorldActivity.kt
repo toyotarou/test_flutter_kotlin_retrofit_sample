@@ -1,4 +1,4 @@
-package com.example.test_flutter_kotlin_hello_world
+package com.example.test_flutter_kotlin_retrofit_sample3
 
 import android.content.Context
 import android.content.Intent
@@ -35,8 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.test_flutter_kotlin_hello_world.room.AppDatabase
-import com.example.test_flutter_kotlin_hello_world.room.WifiLocationEntity
+import com.example.test_flutter_kotlin_retrofit_sample3.room.AppDatabase
+import com.example.test_flutter_kotlin_retrofit_sample3.room.WifiLocationEntity
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 

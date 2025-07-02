@@ -1,4 +1,4 @@
-package com.example.test_flutter_kotlin_hello_world
+package com.example.test_flutter_kotlin_retrofit_sample3
 
 import android.content.pm.ServiceInfo
 import android.app.Notification
@@ -12,8 +12,8 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import com.example.test_flutter_kotlin_hello_world.room.AppDatabase
-import com.example.test_flutter_kotlin_hello_world.room.WifiLocationEntity
+import com.example.test_flutter_kotlin_retrofit_sample3.room.AppDatabase
+import com.example.test_flutter_kotlin_retrofit_sample3.room.WifiLocationEntity
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat

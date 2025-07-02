@@ -1,4 +1,4 @@
-package com.example.test_flutter_kotlin_hello_world.data
+package com.example.test_flutter_kotlin_retrofit_sample3.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

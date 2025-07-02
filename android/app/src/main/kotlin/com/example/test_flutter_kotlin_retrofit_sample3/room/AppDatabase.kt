@@ -1,4 +1,4 @@
-package com.example.test_flutter_kotlin_hello_world.room
+package com.example.test_flutter_kotlin_retrofit_sample3.room
 
 import android.content.Context
 import androidx.room.Database

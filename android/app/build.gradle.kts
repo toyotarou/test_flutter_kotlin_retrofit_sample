@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.test_flutter_kotlin_hello_world"
+    namespace = "com.example.test_flutter_kotlin_retrofit_sample3"
     compileSdk = 34
     ndkVersion = flutter.ndkVersion
 

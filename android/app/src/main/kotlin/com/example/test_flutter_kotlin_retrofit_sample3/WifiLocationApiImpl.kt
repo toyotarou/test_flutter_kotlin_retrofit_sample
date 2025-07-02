@@ -1,10 +1,10 @@
-package com.example.test_flutter_kotlin_hello_world
+package com.example.test_flutter_kotlin_retrofit_sample3
 
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.example.test_flutter_kotlin_hello_world.room.AppDatabase
-import com.example.test_flutter_kotlin_hello_world.room.WifiLocationEntity
+import com.example.test_flutter_kotlin_retrofit_sample3.room.AppDatabase
+import com.example.test_flutter_kotlin_retrofit_sample3.room.WifiLocationEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
