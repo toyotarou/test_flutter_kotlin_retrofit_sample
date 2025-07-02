@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.test_flutter_kotlin_retrofit_sample3"
+    namespace = "com.example.test_flutter_kotlin_retrofit_sample"
     compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.test_flutter_kotlin_hello_world"
+        applicationId = "com.example.test_flutter_kotlin_retrofit_sample"
         minSdk = 24
         targetSdk = 34
         versionCode = flutter.versionCode
@@ -61,18 +61,11 @@ dependencies {
 
     // Flutter 関連の依存関係は flutter-gradle-plugin により自動設定されます
 
-
     // ✅ これを追加（@Preview 用）
     debugImplementation("androidx.compose.ui:ui-tooling:1.5.4")
 
-
     // ✅ 位置情報取得用（FusedLocationProviderClient）
     implementation("com.google.android.gms:play-services-location:21.0.1")
-
-
-
-
-
 
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
@@ -82,7 +75,13 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
 
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-moshi:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.11")
 
-
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.compose.ui:ui:1.6.4")
+    implementation("androidx.compose.material3:material3:1.2.1")
 
 }
